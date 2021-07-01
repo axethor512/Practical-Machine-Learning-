@@ -1,0 +1,114 @@
+---
+title: "PML_Prediction"
+author: "Akshay Thorat"
+date: "01/07/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+In this Project We have used data from the belt of participants about the type they do exercises. We have used 3 models and then tested on the validation set which is randomly selected from training set.On getting the accuracy we have finally teted the best model on test set.
+
+## Loading Packages and Reading Files
+
+```{r results="hide",warning=FALSE}
+library(caret)
+library(corrplot)
+library(ggplot2)
+library(tidyverse)
+library(rattle)
+
+```
+```{r results='hide', warning=FALSE,message=FALSE}
+trainfile <- read_csv("C:/Users/Ashok Thorat/Documents/R/pmlTrain.csv") 
+testfile <- read_csv("C:/Users/Ashok Thorat/Documents/R/pmlTest.csv")
+
+```
+```{r}
+dim(trainfile)
+dim(testfile)
+```
+
+
+
+## Cleaning Data
+
+First, we will remove coloums majorly conntaining NA values
+Then, we will remove metadata which i in first 7 coloumns
+
+```{r}
+trainfile <- trainfile[,colMeans(is.na(trainfile)) < .9]
+trainfile <- trainfile[,-c(1:7)]
+```
+
+Lastly, we will create Partition splitting training set into 'train' and 'valid'
+
+```{r}
+inTrain <- createDataPartition(y=trainfile$classe, p=0.7, list=F)
+train <- trainfile[inTrain,]
+valid <- trainfile[-inTrain,]
+```
+## Testing the Models
+
+Seting up control for training to use 3-fold cross validation
+
+```{r}
+control <- trainControl(method="cv", number=3, verboseIter=F)
+```
+
+### Decision Trees
+
+```{r}
+model_trees<-train(classe~.,data=train,method="rpart",tuneLength =5)
+fancyRpartPlot(model_trees$finalModel)
+
+```
+
+```{r}
+predict_trees <- predict(model_trees, valid)
+cmtrees <- confusionMatrix(predict_trees, factor(valid$classe))
+cmtrees
+```
+
+### Random Forest
+
+```{r}
+mod_rf <- train(classe~., data=train, method="rf", trControl = control, tuneLength = 5)
+pred_rf <- predict(mod_rf, valid)
+cmrf <- confusionMatrix(pred_rf, factor(valid$classe))
+cmrf
+```
+### Gradient Boosting
+
+```{r}
+mod_gbm <- train(classe~., data=train, method="gbm", trControl = control, tuneLength = 5, verbose = F)
+
+pred_gbm <- predict(mod_gbm, valid)
+cmgbm <- confusionMatrix(pred_gbm, factor(valid$classe))
+cmgbm
+```
+
+## Prediction
+
+As we can see Accuracy of Random Forest is high, we will use the same to predict test set
+
+```{r}
+pred <- predict(mod_rf, testfile)
+print(pred)
+```
+
+## Appendix
+
+```{r}
+corrPlot <- cor(train[, -length(names(train))])
+corrplot(corrPlot, method="color")
+plot(model_trees)
+plot(mod_rf)
+plot(mod_gbm)
+```
+
+
